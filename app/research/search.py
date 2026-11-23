@@ -121,9 +121,18 @@ async def _newsdata(query: str, api_key: str, country: str = "",
     Never raises: on any error (quota, network) returns [] so the pipeline
     continues on RSS alone.
     """
-    params = {"apikey": api_key, "q": query, "language": "en"}
+    settings = get_settings()
+    # NewsData free plans allow at most 10 results; paid plans may raise this to
+    # 50. Clamp locally so an accidental env value never creates an invalid call.
+    size = max(1, min(50, settings.newsdata_results_per_request))
+    params = {"apikey": api_key, "q": query, "language": "en", "size": size}
     if country:
         params["country"] = country
+    if settings.newsdata_remove_duplicates:
+        params["removeduplicate"] = 1
+    priority = settings.newsdata_priority_domain.strip().lower()
+    if priority in {"top", "medium", "low"}:
+        params["prioritydomain"] = priority
     try:
         async with httpx.AsyncClient(timeout=20) as client:
             resp = await client.get(NEWSDATA_URL, params=params)
@@ -185,38 +194,64 @@ NEWSDATA_INDIA_VARIETY: list[tuple[str, str, str, str]] = [
      "india_business_news", "india"),
 ]
 
-# Fixed non-India slice (kept minor vs India).
-NEWSDATA_OTHER: list[tuple[str, str, str, str]] = [
-    # --- US (second priority) ---
+# Fixed US slice (second priority).
+NEWSDATA_US: list[tuple[str, str, str, str]] = [
     ("OpenAI OR Nvidia OR Microsoft OR Google AI OR US tech funding", "us",
      "us_tech_news", "us"),
     ("US AI policy OR Silicon Valley startup OR Wall Street tech", "us",
      "us_tech_news", "us"),
-    # --- WORLD (third priority) ---
+]
+
+# Fixed rest-of-world slice (third priority).
+NEWSDATA_GLOBAL: list[tuple[str, str, str, str]] = [
     ("artificial intelligence OR new AI model OR chip breakthrough", "",
      "ai_news", "global"),
-    # --- CHINA / JAPAN (small third-tier slice) ---
     ("China tech OR Huawei OR Alibaba OR DeepSeek OR Japan tech OR Sony", "",
      "china_japan_tech", "global"),
 ]
+
+NEWSDATA_OTHER = NEWSDATA_US + NEWSDATA_GLOBAL
 
 # Kept for backward-compat / tests that import the old name.
 NEWSDATA_INDIA_QUERIES = NEWSDATA_INDIA_CORE + NEWSDATA_INDIA_VARIETY[:2] + NEWSDATA_OTHER
 
 
+def _extra_queries(raw: str, country: str, category: str,
+                   region: str) -> list[tuple[str, str, str, str]]:
+    """Convert a pipe-separated env value into query tuples."""
+    return [
+        (query.strip(), country, category, region)
+        for query in raw.split("|") if query.strip()
+    ]
+
+
 def _rotating_newsdata_queries() -> list[tuple[str, str, str, str]]:
-    """Build this run's query set: fixed India core + a rotating India variety
-    slice (shifts each run so stories stay fresh) + fixed US/world/CJ."""
+    """Build a configurable India -> US -> global, credit-capped query set."""
     import time
 
+    settings = get_settings()
     pool = NEWSDATA_INDIA_VARIETY
+    india_pool = list(NEWSDATA_INDIA_CORE)
     if pool:
-        # Shift the window each run (changes with the hour) for genuine variety.
+        # Rotate the variety pool hourly so repeated runs do not use one fixed set.
         start = int(time.time() // 3600) % len(pool)
-        rotating = [pool[(start + i) % len(pool)] for i in range(2)]
-    else:
-        rotating = []
-    return NEWSDATA_INDIA_CORE + rotating + NEWSDATA_OTHER
+        india_pool.extend(pool[(start + i) % len(pool)] for i in range(len(pool)))
+    india_pool.extend(_extra_queries(
+        settings.newsdata_india_extra_queries, "in", "india_business_news", "india"))
+
+    us_pool = list(NEWSDATA_US)
+    us_pool.extend(_extra_queries(
+        settings.newsdata_us_extra_queries, "us", "us_tech_news", "us"))
+    global_pool = list(NEWSDATA_GLOBAL)
+    global_pool.extend(_extra_queries(
+        settings.newsdata_global_extra_queries, "", "tech_news", "global"))
+
+    india_n = max(0, settings.newsdata_india_queries_per_run)
+    us_n = max(0, settings.newsdata_us_queries_per_run)
+    global_n = max(0, settings.newsdata_global_queries_per_run)
+    ordered = india_pool[:india_n] + us_pool[:us_n] + global_pool[:global_n]
+    cap = max(1, settings.newsdata_max_requests_per_run)
+    return ordered[:cap]
 
 
 async def newsdata_india_boost() -> list[RawArticle]:
@@ -224,7 +259,7 @@ async def newsdata_india_boost() -> list[RawArticle]:
     provider=newsdata is configured.
 
     India-weighted with a rotating variety pool so each run surfaces fresh
-    stories. Credit-safe: bounded to the number of queries per call (~8).
+    stories. Credit-safe: bounded by NEWSDATA_MAX_REQUESTS_PER_RUN.
     """
     settings = get_settings()
     if not settings.feature_enabled("search"):

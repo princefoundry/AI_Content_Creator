@@ -21,7 +21,12 @@ from app.config import get_settings
 from app.database import repositories as repo
 from app.research import rss
 from app.research.deduplicate import deduplicate, filter_by_freshness
-from app.research.ranking import rank_stories, select_diverse
+from app.research.ranking import (
+    is_allowed_story,
+    is_india_business_story,
+    rank_stories,
+    select_diverse,
+)
 from app.research.rss import RawArticle
 from app.schemas.content import (
     LinkedInPostOutput,
@@ -162,6 +167,14 @@ async def research_stories(state: ContentPipelineState) -> dict:
     as the research_summary.
     """
     fresh = state.get("fresh", [])
+    # Hard topic gate before any LLM call: research is limited to technology,
+    # AI, business, startups, investment, markets, and economy coverage.
+    fresh = [
+        item for item in fresh
+        if is_allowed_story(_to_raw({
+            k: v for k, v in item.items() if k in RawArticle.__annotations__
+        }))
+    ]
     skill = load_skill("article_research")
     settings = get_settings()
     llm_calls = state.get("llm_calls", 0)
@@ -322,6 +335,15 @@ async def technical_analysis(state: ContentPipelineState) -> dict:
 async def select_content(state: ContentPipelineState) -> dict:
     analyzed = state.get("analyzed", [])
     eligible = [a for a in analyzed if a.get("verification_status") != "CONTRADICTED"]
+
+    # Enforce the same topic boundary at final selection. rank_stories then
+    # applies the strict India -> US -> global market ordering.
+    eligible = [
+        item for item in eligible
+        if is_allowed_story(_to_raw({
+            k: v for k, v in item.items() if k in RawArticle.__annotations__
+        }))
+    ]
 
     # Skip stories we've ALREADY drafted before (even if they arrived from a
     # different feed URL this time) so the user never sees the same post twice.
@@ -497,11 +519,22 @@ async def generate_linkedin_posts(state: ContentPipelineState) -> dict:
     # and take the next li_budget, so LinkedIn is never a longer copy of a tweet.
     li_budget = get_settings().max_linkedin_posts_per_day
     x_budget = max(1, state.get("max_posts", 3))
-    li_pool = selected[x_budget:x_budget + li_budget]
-    # Fallback: if there weren't enough distinct stories, reuse from the top so
-    # we still produce LinkedIn drafts (rare, only on very thin news days).
+    # LinkedIn is India-business-only. It may cover Indian companies, startups,
+    # investment, markets, economy, or an Indian AI/tech business case. US and
+    # global stories are never used as LinkedIn fallbacks.
+    def _india_business(item: dict) -> bool:
+        raw = _to_raw({
+            k: v for k, v in item.items() if k in RawArticle.__annotations__
+        })
+        return is_india_business_story(raw)
+
+    x_urls = {item.get("url") for item in selected[:x_budget]}
+    india_pool = [item for item in selected if _india_business(item)]
+    li_pool = [item for item in india_pool if item.get("url") not in x_urls][:li_budget]
+    # On a thin India-news day, reuse an Indian business story already used by X
+    # rather than violating the India-only LinkedIn policy.
     if not li_pool:
-        li_pool = selected[:li_budget]
+        li_pool = india_pool[:li_budget]
     made = 0
 
     for item in li_pool:

@@ -5,6 +5,21 @@ software engineer, AI builder, and founder of AEVRIX. The audience is **Indian
 tech people**: developers, founders, students, and tech-curious professionals.
 Make them stop scrolling, feel "this matters to me / to India", and hit follow.
 
+## Non-negotiable market hierarchy
+Apply this exact order when choosing and framing tweets:
+
+1. India: Indian tech, Indian AI, Indian companies and startups, Indian
+   investment, markets, business, and economy.
+2. United States: US tech, AI, startups, companies, business, markets, and economy.
+3. Global: eligible tech, AI, business, investment, market, and economy news
+   from the rest of the world.
+
+India is the dominant first priority. Do not choose a US story while an eligible
+Indian story remains, and do not choose another global story while an eligible
+US story remains. Trending and freshness determine the order inside each tier.
+Never disguise a foreign story as Indian; add an India consequence only when it
+is factual and supported by the supplied context.
+
 ## What every tweet must be about (ONLY these six topics)
 Every tweet must clearly belong to one of these — nothing else:
 1. **Indian tech news** (Jio/Reliance, TRAI/telecom, India IT, data centres,
@@ -19,9 +34,9 @@ Every tweet must clearly belong to one of these — nothing else:
    tech-company moves worldwide).
 6. **Global business news** (funding, M&A, markets, major company/industry moves).
 
-**Priority order for which story to pick:** India first (topics 1–3), then global
-(topics 4–6). When the story is global, still add an India angle / "what this
-means for us" whenever it genuinely applies. Never post anything outside these six
+**Priority order for which story to pick:** India first (topics 1–3), US second,
+and other global stories third (topics 4–6). Add an India angle to a foreign
+story only when it genuinely and factually applies. Never post outside these six
 buckets (no sports, politics-for-its-own-sake, entertainment, etc.).
 
 ## Purpose

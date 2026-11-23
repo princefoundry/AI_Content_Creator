@@ -1,11 +1,11 @@
 """Deterministic weighted ranking of stories (no LLM required).
 
-Weights (configurable):
-  technical_relevance     30%
-  engineering_significance 25%
-  freshness               15%
-  audience_relevance      15%
-  insight_opportunity     15%
+Current weights:
+  technical_relevance      28%
+  engineering_significance 17%
+  freshness                30%
+  audience_relevance       13%
+  insight_opportunity      12%
 
 Each story is scored 0-100. The deterministic scorer uses keyword signals,
 source reliability and recency so the pipeline still ranks usefully when no
@@ -14,6 +14,7 @@ LLM provider is available.
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import UTC, datetime
 
@@ -106,6 +107,62 @@ class ScoredStory:
     audience_relevance: float
     insight_opportunity: float
     rationale: str
+    market_priority: int = 3
+
+
+# Content policy: only technology, AI, business, startups, investment, markets,
+# or economy stories are eligible. Geography is a strict ordering, not a soft
+# score: India first, US second, remaining global stories third.
+_BUSINESS_TERMS = {
+    "business", "company", "startup", "funding", "investment", "invests",
+    "deal", "acquisition", "merger", "ipo", "market", "economy", "economic",
+    "revenue", "profit", "valuation", "venture", "enterprise", "industry",
+    "manufacturing", "exports", "jobs", "fintech", "bank", "rbi", "sebi",
+    "nifty", "sensex", "stock", "trade", "gdp",
+}
+_ALLOWED_TOPIC_TERMS = (
+    _TECH_TERMS | _ENGINEERING_TERMS | _BUSINESS_TERMS | {
+        "technology", "tech", "artificial intelligence", "software", "saas",
+        "digital", "data centre", "data center", "telecom", "semiconductor",
+        "electric vehicle", "ev", "space", "isro", "robotics", "cybersecurity",
+    }
+)
+_INDIA_CATEGORIES = {"indian_tech", "india_tech_news", "india_business_news"}
+
+
+def _has_term(text: str, term: str) -> bool:
+    """Match complete words/phrases so e.g. 'metadata' does not match 'Tata'."""
+    return re.search(rf"(?<!\w){re.escape(term.lower())}(?!\w)", text.lower()) is not None
+
+
+def market_priority(article: RawArticle) -> int:
+    """Return the enforced market tier: India=1, US=2, global=3."""
+    text = f"{article.title} {article.summary}".lower()
+    region = (article.region or "").lower()
+    if region == "india" or any(_has_term(text, term) for term in _INDIA_TERMS):
+        return 1
+    if region in {"us", "usa", "united_states"} or any(
+        _has_term(text, term) for term in _US_TERMS
+    ):
+        return 2
+    return 3
+
+
+def is_allowed_story(article: RawArticle) -> bool:
+    """Allow only tech/AI/business/startup/investment/economy coverage."""
+    text = f"{article.title} {article.summary}".lower()
+    return any(_has_term(text, term) for term in _ALLOWED_TOPIC_TERMS)
+
+
+def is_india_business_story(article: RawArticle) -> bool:
+    """True only for India-related business/company/startup case-study material."""
+    if market_priority(article) != 1:
+        return False
+    text = f"{article.title} {article.summary}".lower()
+    category = (article.category or "").lower()
+    return category in _INDIA_CATEGORIES or any(
+        _has_term(text, term) for term in _BUSINESS_TERMS
+    )
 
 
 def _term_score(text: str, terms: set[str]) -> float:
@@ -191,11 +248,12 @@ def score_story(
     score = min(100.0, base + reliability_bonus + trending_bonus
                 + india_bonus + us_bonus + cj_bonus)
 
+    tier = market_priority(article)
     rationale = (
         f"tech={tech:.0f} eng={eng:.0f} fresh={fresh:.0f} "
         f"aud={audience:.0f} insight={insight:.0f} trend+{trending_bonus:.0f} "
         f"india+{india_bonus:.0f} us+{us_bonus:.0f} cj+{cj_bonus:.0f} "
-        f"tier={reliability_tier}"
+        f"source_tier={reliability_tier} market_priority={tier}"
     )
     return ScoredStory(
         article=article,
@@ -206,6 +264,7 @@ def score_story(
         audience_relevance=round(audience, 1),
         insight_opportunity=round(insight, 1),
         rationale=rationale,
+        market_priority=tier,
     )
 
 
@@ -224,26 +283,34 @@ def rank_stories(
         )
         for a in articles
     ]
-    return sorted(scored, key=lambda s: s.score, reverse=True)
+    # Geography is intentionally sorted before score. A high-scoring global
+    # story must never jump ahead of an eligible India story. Score (including
+    # strong freshness/trending signals) orders stories inside each market tier.
+    return sorted(scored, key=lambda s: (s.market_priority, -s.score))
 
 
 def select_diverse(scored: list[ScoredStory], limit: int = 5) -> list[ScoredStory]:
-    """Select top stories while enforcing category diversity."""
+    """Select diverse stories without ever crossing the market priority order."""
     selected: list[ScoredStory] = []
     seen_categories: dict[str, int] = {}
-    for story in scored:
-        cat = story.article.category or "other"
-        if seen_categories.get(cat, 0) >= 2 and len(selected) < limit:
-            continue  # cap 2 per category until we run low on choices
-        selected.append(story)
-        seen_categories[cat] = seen_categories.get(cat, 0) + 1
-        if len(selected) >= limit:
-            break
-    # Fill remaining slots if diversity cap left us short.
-    if len(selected) < limit:
-        for story in scored:
+    for priority in (1, 2, 3):
+        tier = [story for story in scored if story.market_priority == priority]
+
+        # Prefer category diversity inside this market tier.
+        for story in tier:
+            cat = story.article.category or "other"
+            if seen_categories.get(cat, 0) >= 2:
+                continue
+            selected.append(story)
+            seen_categories[cat] = seen_categories.get(cat, 0) + 1
+            if len(selected) >= limit:
+                return selected
+
+        # Exhaust remaining stories in this tier before admitting the next
+        # market. Geography has precedence over the diversity preference.
+        for story in tier:
             if story not in selected:
                 selected.append(story)
                 if len(selected) >= limit:
-                    break
+                    return selected
     return selected

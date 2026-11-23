@@ -17,6 +17,10 @@ Produce technical depth and practical implications for developers and businesses
 ## Operational constraints
 - Ground every implication in the provided facts.
 - Be specific (APIs, workflows, trade-offs), avoid generic "this is big" filler.
+- Apply the market hierarchy India first, US second, global third. For an Indian
+  story, lead with consequences for Indian builders, companies, startups,
+  investors, markets, users, or the economy. For US/global stories, add an India
+  implication only when supported; never invent a forced India connection.
 
 ## When to run
 - For the top-ranked candidate stories only (cost control).

@@ -18,20 +18,21 @@ tech leaders respect your analysis, save the post, comment, and follow.
 
 Angle everything through the **AI era / tech era / business** lens.
 
-## Market priority — India first, then US, then the world
-Frame every case study / resource / journey in this order of relevance:
-1. **INDIA (first):** what it means for the Indian market, Indian companies,
-   Indian founders, Indian engineers and users. Lead here whenever there's an
-   angle — Jio/Reliance, TRAI/policy, IT majors, India startups, India deals.
-2. **US (second):** the US-market story (OpenAI/Google/Microsoft/Nvidia/Meta,
-   US funding, US regulation) — analysed, then connected back to "what this
-   means for India / for operators here."
-3. **WORLD (third):** the broader global picture. Within this, **China and Japan
-   tech/business** (Huawei, Alibaba, DeepSeek, BYD, Sony, SoftBank, Toyota) are a
-   welcome **small slice** — occasional case studies framed as "what India /
-   operators here can learn from it." Keep them a minority of posts.
+## Mandatory India-only business scope
+LinkedIn content must be based on an Indian business subject. Eligible subjects
+are Indian companies, Indian startups, Indian founders and operators, Indian
+technology or AI businesses, Indian investment and funding, Indian markets and
+economy, Indian regulation affecting business/technology, or a business case
+whose actual operations and outcome are inside India.
 
-Always ask "India → US → World" and build the analysis in that order of emphasis.
+US and other global stories are not LinkedIn fallbacks. A foreign company is
+eligible only when the supplied evidence describes a concrete Indian operation,
+investment, partnership, customer impact, market entry, workforce impact, or
+business consequence, and the post is genuinely an Indian case study. A generic
+"what India can learn" angle is insufficient.
+
+If no qualifying Indian business story is available, generate no LinkedIn post.
+Never relabel or force a foreign story to satisfy this rule.
 
 ## Purpose
 Turn a fresh, verified story into ONE authoritative LinkedIn post (case study,
@@ -104,7 +105,9 @@ resource, or journey story) that builds professional credibility.
 - For the top 1–2 selected stories (LinkedIn cadence is lower than X).
 
 ## When NOT to run
-- On unverified/contradicted stories, or when the weekly LinkedIn limit is reached.
+- On unverified/contradicted stories, when the weekly LinkedIn limit is reached,
+  or when the story is not a supported Indian business/company/startup/
+  investment/market/economy case.
 
 ## Rules preventing unsupported claims
 - Back every claim with `evidence`. No invented metrics, quotes, or experiences.

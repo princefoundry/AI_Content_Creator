@@ -21,6 +21,12 @@ Score a draft and flag issues; reject misleading or low-quality content.
 - Natural writing, brand consistency, platform suitability.
 - Repetition, grammar, clarity.
 - Unsupported claims and copyright concerns (no copied article text).
+- Scope compliance: technology, AI, business, startups, investment, markets, or
+  economy only; India priority before US, and US before other global stories.
+- LinkedIn compliance: the subject must be an Indian company, startup, business,
+  investment, market, economy, or Indian tech/AI business case. Reject a
+  US/global LinkedIn draft rather than merely lowering its score.
+- X compliance: India is tier 1, US tier 2, and other global coverage tier 3.
 
 ## Operational constraints
 - If a claim lacks evidence, that is an issue and should lower the score.

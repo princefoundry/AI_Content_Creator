@@ -95,6 +95,19 @@ class Settings(BaseSettings):
     # ---- Search ----
     search_provider: str = ""
     search_api_key: str = ""
+    # NewsData.io request mix. The hard cap protects API credits even if the
+    # per-market counts or optional query strings are configured too high.
+    newsdata_india_queries_per_run: int = 4
+    newsdata_us_queries_per_run: int = 2
+    newsdata_global_queries_per_run: int = 2
+    newsdata_max_requests_per_run: int = 8
+    newsdata_results_per_request: int = 10
+    newsdata_priority_domain: str = ""
+    newsdata_remove_duplicates: bool = True
+    # Optional pipe-separated queries appended to each market's built-in pool.
+    newsdata_india_extra_queries: str = ""
+    newsdata_us_extra_queries: str = ""
+    newsdata_global_extra_queries: str = ""
 
     # ---- Security ----
     app_encryption_key: str = ""

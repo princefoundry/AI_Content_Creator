@@ -7,6 +7,17 @@ text provided, extract a neutral summary and the concrete factual claims.
 Turn a raw article into structured research: a short neutral summary, the key
 factual claims, and named entities (models, companies, tools, people).
 
+## Mandatory scope
+Research only eligible technology, AI, technology-business, startup,
+investment, company, market, business, or economy stories. Apply the strict
+market order India first, US second, and other global markets third. An article
+outside these subjects must not receive deep research.
+
+For India stories, preserve the concrete Indian context: Indian company or
+startup, city/state, regulator, investment, market, users, jobs, infrastructure,
+or economic consequence stated by the source. Do not manufacture an India angle
+for a US/global story; record one only when the source supports it.
+
 ## Required inputs
 - Article title, publisher, URL, summary/snippet (untrusted, delimited).
 
@@ -30,6 +41,8 @@ factual claims, and named entities (models, companies, tools, people).
 
 ## When NOT to run
 - On duplicate or stale stories (already filtered out).
+- On entertainment, sport, lifestyle, general politics, or general news without
+  a direct technology, AI, startup, business, investment, market, or economy link.
 
 ## Rules preventing unsupported claims
 - Never fabricate statistics, benchmarks, funding figures or quotes.

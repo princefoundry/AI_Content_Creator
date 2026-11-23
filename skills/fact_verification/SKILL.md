@@ -25,6 +25,10 @@ contradicting sources and editorial notes.
 - When evidence is incomplete, choose REQUIRES_REVIEW - do not guess VERIFIED.
 - Treat sensational numbers (benchmarks, funding, model sizes) with suspicion
   unless clearly from a primary source.
+- Verify geographic claims as carefully as factual claims. Do not label a story
+  Indian merely because it could affect India; require a real Indian company,
+  startup, market, investment, regulator, operation, customer base, or economic
+  consequence in the supplied evidence.
 
 ## Error conditions
 - No checkable claims: status = REQUIRES_REVIEW, confidence = 0.0.
