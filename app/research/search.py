@@ -125,9 +125,21 @@ async def _newsdata(query: str, api_key: str, country: str = "",
     # NewsData free plans allow at most 10 results; paid plans may raise this to
     # 50. Clamp locally so an accidental env value never creates an invalid call.
     size = max(1, min(50, settings.newsdata_results_per_request))
-    params = {"apikey": api_key, "q": query, "language": "en", "size": size}
+    query_field = settings.newsdata_query_field.strip()
+    if query_field not in {"q", "qInTitle", "qInMeta"}:
+        query_field = "qInTitle"
+    params = {
+        "apikey": api_key,
+        query_field: query,
+        "language": "en",
+        "size": size,
+        "timeframe": max(1, min(48, settings.newsdata_timeframe_hours)),
+    }
     if country:
         params["country"] = country
+    categories = settings.newsdata_api_categories.strip()
+    if categories:
+        params["category"] = categories
     if settings.newsdata_remove_duplicates:
         params["removeduplicate"] = 1
     priority = settings.newsdata_priority_domain.strip().lower()
@@ -210,6 +222,38 @@ NEWSDATA_GLOBAL: list[tuple[str, str, str, str]] = [
      "china_japan_tech", "global"),
 ]
 
+# LinkedIn discovery is business-case focused. Foreign-market queries explicitly
+# require an India connection; the downstream India-business gate still rejects
+# any result without evidence of a concrete Indian operation or consequence.
+NEWSDATA_LINKEDIN_INDIA: list[tuple[str, str, str, str]] = [
+    ("India startup funding OR Indian startup investment", "in",
+     "india_business_news", "india"),
+    ("India company earnings OR Indian business expansion", "in",
+     "india_business_news", "india"),
+    ("India IPO OR SEBI OR Indian stock market", "in",
+     "india_business_news", "india"),
+    ("India fintech OR UPI OR digital payments business", "in",
+     "india_business_news", "india"),
+    ("India manufacturing OR PLI OR semiconductor investment", "in",
+     "india_business_news", "india"),
+    ("India AI company OR enterprise AI India", "in",
+     "india_business_news", "india"),
+    ("India economy OR RBI OR Indian investment", "in",
+     "india_business_news", "india"),
+]
+
+NEWSDATA_LINKEDIN_US: list[tuple[str, str, str, str]] = [
+    ("US company India investment OR India expansion", "us",
+     "india_business_news", "us"),
+    ("US startup India partnership OR Indian market entry", "us",
+     "india_business_news", "us"),
+]
+
+NEWSDATA_LINKEDIN_GLOBAL: list[tuple[str, str, str, str]] = [
+    ("global company India investment OR India operations", "",
+     "india_business_news", "global"),
+]
+
 NEWSDATA_OTHER = NEWSDATA_US + NEWSDATA_GLOBAL
 
 # Kept for backward-compat / tests that import the old name.
@@ -226,7 +270,7 @@ def _extra_queries(raw: str, country: str, category: str,
 
 
 def _rotating_newsdata_queries() -> list[tuple[str, str, str, str]]:
-    """Build a configurable India -> US -> global, credit-capped query set."""
+    """Build the X and LinkedIn profiles, totaling at most the credit cap."""
     import time
 
     settings = get_settings()
@@ -246,10 +290,28 @@ def _rotating_newsdata_queries() -> list[tuple[str, str, str, str]]:
     global_pool.extend(_extra_queries(
         settings.newsdata_global_extra_queries, "", "tech_news", "global"))
 
-    india_n = max(0, settings.newsdata_india_queries_per_run)
-    us_n = max(0, settings.newsdata_us_queries_per_run)
-    global_n = max(0, settings.newsdata_global_queries_per_run)
-    ordered = india_pool[:india_n] + us_pool[:us_n] + global_pool[:global_n]
+    tweet_queries = (
+        india_pool[:max(0, settings.newsdata_tweet_india_queries_per_run)]
+        + us_pool[:max(0, settings.newsdata_tweet_us_queries_per_run)]
+        + global_pool[:max(0, settings.newsdata_tweet_global_queries_per_run)]
+    )
+
+    linkedin_india = list(NEWSDATA_LINKEDIN_INDIA)
+    linkedin_india.extend(_extra_queries(
+        settings.newsdata_india_extra_queries, "in", "india_business_news", "india"))
+    linkedin_us = list(NEWSDATA_LINKEDIN_US)
+    linkedin_us.extend(_extra_queries(
+        settings.newsdata_us_extra_queries, "us", "india_business_news", "us"))
+    linkedin_global = list(NEWSDATA_LINKEDIN_GLOBAL)
+    linkedin_global.extend(_extra_queries(
+        settings.newsdata_global_extra_queries, "", "india_business_news", "global"))
+    linkedin_queries = (
+        linkedin_india[:max(0, settings.newsdata_linkedin_india_queries_per_run)]
+        + linkedin_us[:max(0, settings.newsdata_linkedin_us_queries_per_run)]
+        + linkedin_global[:max(0, settings.newsdata_linkedin_global_queries_per_run)]
+    )
+
+    ordered = tweet_queries + linkedin_queries
     cap = max(1, settings.newsdata_max_requests_per_run)
     return ordered[:cap]
 

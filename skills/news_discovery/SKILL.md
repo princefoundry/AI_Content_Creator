@@ -44,6 +44,11 @@ removal, and optional market-specific query strings are environment-driven via
 the `NEWSDATA_*` settings in `.env.example`. Preserve the hard request cap and
 the India -> US -> global ordering when customizing them.
 
+The default run uses 20 requests: X discovery gets 6 India, 2 US, and 2 global;
+LinkedIn business-case discovery gets 7 India, 2 US queries requiring a concrete
+India link, and 1 global query requiring a concrete India link. LinkedIn output
+remains India-business-only after discovery.
+
 ## Operational constraints
 - Respect timeouts, rate limits and robots directives. Never bypass paywalls,
   CAPTCHAs or authentication.

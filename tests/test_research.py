@@ -100,11 +100,11 @@ def test_newsdata_rotating_queries_are_india_weighted():
     # Core India queries always present.
     for core in NEWSDATA_INDIA_CORE:
         assert core in qs
-    # India stays the majority of the query set.
-    india = [q for q in qs if q[3] == "india"]
-    assert len(india) >= len(qs) - len(india)  # India >= rest
-    # Reasonable, credit-safe size.
-    assert 6 <= len(qs) <= 10
+    # Exact default mix: X 6/2/2, then LinkedIn discovery 7/2/1.
+    assert len(qs) == 20
+    assert [q[3] for q in qs[:10]] == ["india"] * 6 + ["us"] * 2 + ["global"] * 2
+    assert [q[3] for q in qs[10:]] == ["india"] * 7 + ["us"] * 2 + ["global"]
+    assert sum(q[3] == "india" for q in qs) == 13
 
 
 def test_newsdata_query_mix_is_configurable_and_capped(monkeypatch):
@@ -112,9 +112,12 @@ def test_newsdata_query_mix_is_configurable_and_capped(monkeypatch):
     from app.research import search
 
     settings = Settings(
-        newsdata_india_queries_per_run=3,
-        newsdata_us_queries_per_run=2,
-        newsdata_global_queries_per_run=2,
+        newsdata_tweet_india_queries_per_run=3,
+        newsdata_tweet_us_queries_per_run=2,
+        newsdata_tweet_global_queries_per_run=2,
+        newsdata_linkedin_india_queries_per_run=2,
+        newsdata_linkedin_us_queries_per_run=1,
+        newsdata_linkedin_global_queries_per_run=1,
         newsdata_max_requests_per_run=5,
         newsdata_india_extra_queries="India SaaS funding|India data centre investment",
     )
